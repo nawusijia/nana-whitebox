@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>娜娜白膜 · 站位预演</title>
+<style>
+:root{
+  --bg:#f4f3ef; --panel:#ffffff; --ink:#1d1d1f; --mute:#6b6b70; --line:#e2e0da;
+  --accent:#ff6a3d; --accent-soft:#fff0ea; --ok:#2f9e6b; --warn:#e8590c; --bad:#d6336c;
+  --grid:#e9e7e1; --sel:#2b6cff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.5 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+button,input,select{font:inherit}
+header{height:48px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.5px}
+header h1 b{color:var(--accent)}
+header .sp{flex:1}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#bbb}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.small{padding:2px 8px;font-size:12px}
+main{display:grid;grid-template-columns:240px 1fr 460px;grid-template-rows:1fr 230px;height:calc(100% - 48px)}
+#left{grid-row:1/3;border-right:1px solid var(--line);background:var(--panel);overflow:auto;padding:12px}
+#plan{grid-column:2;grid-row:1;position:relative;overflow:hidden}
+#plan canvas{position:absolute;inset:0;width:100%;height:100%;cursor:default}
+#right{grid-column:3;grid-row:1;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;overflow:hidden}
+#shots{grid-column:2/4;border-top:1px solid var(--line);background:var(--panel);overflow:auto}
+h3{font-size:12px;color:var(--mute);font-weight:600;margin:14px 0 6px;letter-spacing:.5px}
+h3:first-child{margin-top:0}
+.addrow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.list .it{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer}
+.list .it:hover{background:#f6f5f2}
+.list .it.on{background:var(--accent-soft)}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.props label{display:grid;grid-template-columns:52px 1fr;align-items:center;gap:6px;margin:4px 0}
+.props input,.props select{width:100%;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.props .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.hint{color:var(--mute);font-size:12px}
+#view3d{position:relative;aspect-ratio:16/9;background:#dcdad4;flex:none}
+#view3d canvas{width:100%;height:100%;display:block}
+#view3d .tag{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.6);color:#fff;border-radius:4px;padding:1px 6px;font-size:12px}
+#analysis{padding:10px 12px;overflow:auto;flex:1}
+#analysis .say{background:#faf9f6;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;white-space:pre-wrap}
+.warn{color:var(--warn)} .bad{color:var(--bad)} .ok{color:var(--ok)}
+table{border-collapse:collapse;width:100%}
+#shots th{position:sticky;top:0;background:#faf9f6;font-weight:600;color:var(--mute);font-size:12px;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+#shots td{padding:4px 8px;border-bottom:1px solid #f0eee9;vertical-align:middle}
+#shots tr.on td{background:var(--accent-soft)}
+#shots input,#shots select{padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;width:100%}
+#shots td.num{font-weight:700;width:42px;cursor:pointer}
+.pill{display:inline-block;padding:0 6px;border-radius:10px;font-size:11px;background:#eee}
+.pill.warn{background:#fff1e6;color:var(--warn)} .pill.bad{background:#ffe8ef;color:var(--bad)} .pill.ok{background:#e9f7f0;color:var(--ok)}
+#player{position:fixed;inset:0;background:rgba(10,10,12,.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:10}
+#player canvas{width:min(92vw,1280px);aspect-ratio:16/9;background:#000;border-radius:6px}
+#player .bar{display:flex;gap:8px;align-items:center;color:#ddd}
+.toggle{display:flex;align-items:center;gap:6px;margin:6px 0}
+.props label.toggle{display:flex}
+.props label.toggle input{width:auto}
+@media (max-width:1100px){main{grid-template-columns:200px 1fr 380px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>娜娜白膜 <b>·</b> 站位预演</h1>
+  <span class="hint">摆人、摆家具、摆机位 → 自动算谁在左谁在右 → 拼成预演视频</span>
+  <span class="sp"></span>
+  <button class="btn" id="bSample">示例场景</button>
+  <button class="btn" id="bNew">清空</button>
+  <button class="btn" id="bLoad">打开…</button>
+  <button class="btn" id="bSave">保存</button>
+  <button class="btn primary" id="bPlay">▶ 播放预演</button>
+  <input type="file" id="file" accept=".json" hidden>
+</header>
+<main>
+  <section id="left">
+    <h3>添加</h3>
+    <div class="addrow">
+      <button class="btn" data-add="person">＋ 人物</button>
+      <button class="btn" data-add="camera">＋ 机位</button>
+      <button class="btn" data-add="box">＋ 家具/墙</button>
+      <button class="btn" data-add="shot">＋ 镜头</button>
+    </div>
+    <h3>场景里的东西</h3>
+    <div class="list" id="list"></div>
+    <h3>属性</h3>
+    <div class="props" id="props"><span class="hint">在俯视图上点一个东西</span></div>
+    <h3>怎么用</h3>
+    <div class="hint">
+      · 拖动人物、家具、机位改位置<br>
+      · 拖人物身上的小圆点改朝向，拖机位前面的小圆点改它看向哪里<br>
+      · 下方表格每一行是一个镜头：选机位、填台词<br>
+      · 打开“只改这一镜的站位”后，拖人物只影响当前镜头和后面的镜头，用来做走位<br>
+      · 右边是这个镜头拍到的白膜画面，和可以直接抄进提示词的站位文字
+    </div>
+  </section>
+  <section id="plan"><canvas id="cPlan"></canvas></section>
+  <section id="right">
+    <div id="view3d"><canvas id="c3d"></canvas><span class="tag" id="tag3d">镜头</span></div>
+    <div id="analysis"></div>
+  </section>
+  <section id="shots">
+    <table>
+      <thead><tr><th>镜号</th><th style="width:130px">机位</th><th style="width:70px">时长(秒)</th><th style="width:110px">谁说</th><th>台词</th><th style="width:150px">检查</th><th style="width:40px"></th></tr></thead>
+      <tbody id="tShots"></tbody>
+    </table>
+  </section>
+</main>
+<div id="player">
+  <canvas id="cPlay" width="1280" height="720"></canvas>
+  <div class="bar">
+    <span id="playInfo"></span>
+    <label class="toggle"><input type="checkbox" id="optTTS" checked>朗读台词（浏览器自带语音）</label>
+    <label class="toggle"><input type="checkbox" id="optRec">同时录成视频</label>
+    <button class="btn small" id="bReplay">重播</button>
+    <button class="btn small" id="bClose">关闭</button>
+  </div>
+</div>
+
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* ---------------- 数据 ---------------- */
+const COLORS = ['#ef4444','#3b82f6','#22c55e','#eab308','#a855f7','#ec4899','#14b8a6','#f97316'];
+const uid = p => p + Math.random().toString(36).slice(2, 8);
+const SAMPLE = () => ({
+  name: '咖啡店 · 三人',
+  room: { w: 10, d: 8 },
+  boxes: [
+    { id: uid('b'), name: '吧台', x: 0, z: -2.4, w: 4.2, d: 0.7, h: 1.1, rot: 0 },
+    { id: uid('b'), name: '后墙酒柜', x: 0, z: -3.8, w: 6, d: 0.4, h: 2.2, rot: 0 },
+    { id: uid('b'), name: '圆桌', x: -2.6, z: 0.8, w: 0.9, d: 0.9, h: 0.75, rot: 0 },
+    { id: uid('b'), name: '圆桌', x: 2.4, z: 1.2, w: 0.9, d: 0.9, h: 0.75, rot: 0 },
+    { id: uid('b'), name: '柱子', x: -3.2, z: -1.4, w: 0.4, d: 0.4, h: 3, rot: 0 },
+  ],
+  people: [
+    { id: uid('p'), name: '店员', color: COLORS[0], x: 0, z: -3.0, face: 180, sit: false },
+    { id: uid('p'), name: '女主', color: COLORS[1], x: -0.7, z: -1.7, face: 20, sit: false },
+    { id: uid('p'), name: '男主', color: COLORS[2], x: 0.7, z: -1.6, face: -40, sit: false },
+  ],
+  cameras: [
+    { id: uid('c'), name: '全景', x: 0, z: 3.4, h: 1.6, tx: 0, tz: -2.2, th: 1.2, lens: 28 },
+    { id: uid('c'), name: '过女主拍男主', x: -1.7, z: -0.4, h: 1.5, tx: 0.7, tz: -1.7, th: 1.5, lens: 40 },
+    { id: uid('c'), name: '男主反打', x: 1.8, z: -0.3, h: 1.5, tx: -0.7, tz: -1.8, th: 1.5, lens: 40 },
+  ],
+  shots: [],
+});
+function sampleShots(s) {
+  const [c0, c1, c2] = s.cameras, [p0, p1, p2] = s.people;
+  s.shots = [
+    { id: uid('s'), cam: c0.id, dur: 3, speaker: '', line: '', moves: {} },
+    { id: uid('s'), cam: c1.id, dur: 3, speaker: p2.id, line: '你今天怎么来这么早？', moves: {} },
+    { id: uid('s'), cam: c2.id, dur: 2, speaker: p1.id, line: '因为我想先帮你点好那杯不加糖的美式。', moves: {} },
+    { id: uid('s'), cam: c0.id, dur: 3, speaker: p0.id, line: '两位，咖啡好了。', moves: { [p0.id]: { x: -0.2, z: -2.95, face: 180 } } },
+  ];
+  return s;
+}
+let S;
+try { S = JSON.parse(localStorage.getItem('nana-whitebox')) } catch (e) { S = null }
+if (!S || !S.room) S = sampleShots(SAMPLE());
+let sel = null;          // {kind, id}
+let curShot = S.shots[0]?.id || null;
+let perShot = false;     // 只改这一镜的站位
+const save = () => { try { localStorage.setItem('nana-whitebox', JSON.stringify(S)) } catch (e) {} };
+
+/* 某个镜头时，人物的位置 = 基础位置 + 这一镜及之前所有镜头的走位 */
+function peopleAt(shotId) {
+  const st = Object.fromEntries(S.people.map(p => [p.id, { ...p }]));
+  for (const sh of S.shots) {
+    for (const [pid, m] of Object.entries(sh.moves || {})) if (st[pid]) Object.assign(st[pid], m);
+    if (sh.id === shotId) break;
+  }
+  return st;
+}
+const camOf = sh => S.cameras.find(c => c.id === sh?.cam);
+const shotIndex = id => S.shots.findIndex(s => s.id === id);
+
+/* ---------------- 俯视图 ---------------- */
+const cPlan = document.getElementById('cPlan'), g = cPlan.getContext('2d');
+let view = { s: 60, ox: 0, oy: 0 };
+function fitPlan() {
+  const r = cPlan.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  cPlan.width = r.width * dpr; cPlan.height = r.height * dpr;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  view.s = Math.min(r.width / (S.room.w + 1.5), r.height / (S.room.d + 1.5));
+  view.ox = r.width / 2; view.oy = r.height / 2;
+  drawPlan();
+}
+const W2P = (x, z) => [view.ox + x * view.s, view.oy + z * view.s];
+const P2W = (px, py) => [(px - view.ox) / view.s, (py - view.oy) / view.s];
+const faceVec = a => [Math.sin(a * Math.PI / 180), -Math.cos(a * Math.PI / 180)];
+const hfov = lens => 2 * Math.atan(18 / lens);
+function drawPlan() {
+  const r = cPlan.getBoundingClientRect();
+  g.clearRect(0, 0, r.width, r.height);
+  // 房间和网格
+  const [x0, y0] = W2P(-S.room.w / 2, -S.room.d / 2), [x1, y1] = W2P(S.room.w / 2, S.room.d / 2);
+  g.fillStyle = '#fbfaf7'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+  g.strokeStyle = getCss('--grid'); g.lineWidth = 1;
+  for (let x = Math.ceil(-S.room.w / 2); x <= S.room.w / 2; x++) { const [a] = W2P(x, 0); g.beginPath(); g.moveTo(a, y0); g.lineTo(a, y1); g.stroke() }
+  for (let z = Math.ceil(-S.room.d / 2); z <= S.room.d / 2; z++) { const [, b] = W2P(0, z); g.beginPath(); g.moveTo(x0, b); g.lineTo(x1, b); g.stroke() }
+  g.strokeStyle = '#cfccc4'; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  g.fillStyle = '#a8a59d'; g.font = '11px sans-serif'; g.fillText('1 格 = 1 米', x0 + 4, y1 - 6);
+  const sh = S.shots.find(s => s.id === curShot), st = peopleAt(curShot);
+  // 机位视野
+  for (const c of S.cameras) {
+    const on = sh && sh.cam === c.id;
+    const ang = Math.atan2(c.tz - c.z, c.tx - c.x), hf = hfov(c.lens) / 2, R = 30;
+    const [px, py] = W2P(c.x, c.z);
+    if (on) {
+      g.fillStyle = 'rgba(255,106,61,.10)'; g.beginPath(); g.moveTo(px, py);
+      g.arc(px, py, R * view.s, ang - hf, ang + hf); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(255,106,61,.55)'; g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(ang - hf) * R * view.s, py + Math.sin(ang - hf) * R * view.s);
+      g.moveTo(px, py); g.lineTo(px + Math.cos(ang + hf) * R * view.s, py + Math.sin(ang + hf) * R * view.s); g.stroke();
+    }
+  }
+  g.save(); g.beginPath(); g.rect(x0 - 40, y0 - 40, x1 - x0 + 80, y1 - y0 + 80); g.clip();
+  // 家具
+  for (const b of S.boxes) {
+    const [px, py] = W2P(b.x, b.z);
+    g.save(); g.translate(px, py); g.rotate(b.rot * Math.PI / 180);
+    g.fillStyle = isSel('box', b.id) ? '#c9d8ff' : '#d9d6ce'; g.strokeStyle = isSel('box', b.id) ? getCss('--sel') : '#aaa69c';
+    g.fillRect(-b.w / 2 * view.s, -b.d / 2 * view.s, b.w * view.s, b.d * view.s); g.strokeRect(-b.w / 2 * view.s, -b.d / 2 * view.s, b.w * view.s, b.d * view.s);
+    g.fillStyle = '#56534c'; g.font = '11px sans-serif'; g.textAlign = 'center'; g.fillText(b.name, 0, 4); g.restore();
+  }
+  // 人物
+  for (const p0 of S.people) {
+    const p = st[p0.id], [px, py] = W2P(p.x, p.z), rr = 0.26 * view.s, [fx, fz] = faceVec(p.face);
+    g.fillStyle = p.color; g.beginPath(); g.arc(px, py, rr, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(px, py, rr, Math.atan2(fz, fx) - .8, Math.atan2(fz, fx) + .8); g.lineTo(px, py); g.fill();
+    if (isSel('person', p.id)) { g.strokeStyle = getCss('--sel'); g.lineWidth = 2; g.beginPath(); g.arc(px, py, rr + 4, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1 }
+    const hx = px + fx * (rr + 14), hy = py + fz * (rr + 14);
+    g.strokeStyle = p.color; g.beginPath(); g.moveTo(px, py); g.lineTo(hx, hy); g.stroke();
+    g.fillStyle = '#fff'; g.strokeStyle = p.color; g.beginPath(); g.arc(hx, hy, 5, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = '#222'; g.font = 'bold 12px sans-serif'; g.textAlign = 'center'; g.fillText(p.name + (p.sit ? '（坐）' : ''), px, py + rr + 16);
+  }
+  // 机位
+  for (const c of S.cameras) {
+    const on = sh && sh.cam === c.id, [px, py] = W2P(c.x, c.z), [tx, ty] = W2P(c.tx, c.tz), ang = Math.atan2(ty - py, tx - px);
+    g.save(); g.translate(px, py); g.rotate(ang);
+    g.fillStyle = on ? getCss('--accent') : '#3a3a3c'; g.beginPath(); g.moveTo(14, 0); g.lineTo(-10, -9); g.lineTo(-10, 9); g.closePath(); g.fill();
+    if (isSel('camera', c.id)) { g.strokeStyle = getCss('--sel'); g.lineWidth = 2; g.stroke(); g.lineWidth = 1 }
+    g.restore();
+    g.setLineDash([4, 4]); g.strokeStyle = on ? getCss('--accent') : '#999'; g.beginPath(); g.moveTo(px, py); g.lineTo(tx, ty); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(tx, ty, 5, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = on ? getCss('--accent') : '#3a3a3c'; g.font = '11px sans-serif'; g.textAlign = 'center'; g.fillText(`${c.name} ${c.lens}mm`, px, py - 14);
+  }
+  g.restore();
+}
+const getCss = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const isSel = (k, id) => sel && sel.kind === k && sel.id === id;
+
+/* 拖动 */
+let drag = null;
+cPlan.addEventListener('pointerdown', e => {
+  const r = cPlan.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, st = peopleAt(curShot);
+  const near = (x, z, rad) => { const [px, py] = W2P(x, z); return Math.hypot(px - mx, py - my) <= rad };
+  let hit = null;
+  for (const c of S.cameras) if (near(c.tx, c.tz, 8)) hit = { kind: 'camera', id: c.id, part: 'target' };
+  if (!hit) for (const p0 of S.people) { const p = st[p0.id], [fx, fz] = faceVec(p.face), rr = 0.26 * view.s; const [px, py] = W2P(p.x, p.z); if (Math.hypot(px + fx * (rr + 14) - mx, py + fz * (rr + 14) - my) < 8) hit = { kind: 'person', id: p.id, part: 'face' } }
+  if (!hit) for (const c of S.cameras) if (near(c.x, c.z, 14)) hit = { kind: 'camera', id: c.id, part: 'body' };
+  if (!hit) for (const p0 of S.people) { const p = st[p0.id]; if (near(p.x, p.z, 0.3 * view.s)) hit = { kind: 'person', id: p.id, part: 'body' } }
+  if (!hit) for (const b of [...S.boxes].reverse()) {
+    const [wx, wz] = P2W(mx, my), a = -b.rot * Math.PI / 180, dx = wx - b.x, dz = wz - b.z;
+    const lx = dx * Math.cos(a) - dz * Math.sin(a), lz = dx * Math.sin(a) + dz * Math.cos(a);
+    if (Math.abs(lx) <= b.w / 2 && Math.abs(lz) <= b.d / 2) { hit = { kind: 'box', id: b.id, part: 'body' }; break }
+  }
+  if (hit) { sel = { kind: hit.kind, id: hit.id }; const [wx, wz] = P2W(mx, my); drag = { ...hit, sx: wx, sz: wz }; cPlan.setPointerCapture(e.pointerId) }
+  else sel = null;
+  refresh();
+});
+cPlan.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const r = cPlan.getBoundingClientRect(); let [wx, wz] = P2W(e.clientX - r.left, e.clientY - r.top);
+  const snap = v => e.shiftKey ? v : Math.round(v * 20) / 20;
+  wx = snap(wx); wz = snap(wz);
+  if (drag.kind === 'box') { const b = S.boxes.find(o => o.id === drag.id); b.x = wx; b.z = wz }
+  if (drag.kind === 'camera') { const c = S.cameras.find(o => o.id === drag.id); if (drag.part === 'target') { c.tx = wx; c.tz = wz } else { const dx = wx - c.x, dz = wz - c.z; c.x = wx; c.z = wz; c.tx += dx; c.tz += dz } }
+  if (drag.kind === 'person') {
+    const base = S.people.find(o => o.id === drag.id), cur = peopleAt(curShot)[drag.id];
+    let patch;
+    if (drag.part === 'face') { patch = { face: Math.round(Math.atan2(wx - cur.x, -(wz - cur.z)) * 180 / Math.PI) } }
+    else patch = { x: wx, z: wz };
+    if (perShot && curShot) { const sh = S.shots.find(s => s.id === curShot); sh.moves[drag.id] = { ...(sh.moves[drag.id] || { x: cur.x, z: cur.z, face: cur.face }), ...patch } }
+    else Object.assign(base, patch);
+  }
+  refresh(true);
+});
+cPlan.addEventListener('pointerup', () => { if (drag) { drag = null; save(); refresh() } });
+
+/* ---------------- 3D 白膜 ---------------- */
+const c3d = document.getElementById('c3d');
+const R3 = new THREE.WebGLRenderer({ canvas: c3d, antialias: true, preserveDrawingBuffer: true });
+R3.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#d9d7d1');
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9a968c, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(4, 8, 5); scene.add(sun);
+const cam3 = new THREE.PerspectiveCamera(30, 16 / 9, 0.05, 200);
+const world = new THREE.Group(); scene.add(world);
+const matWhite = new THREE.MeshLambertMaterial({ color: 0xf2f1ec });
+const matBox = new THREE.MeshLambertMaterial({ color: 0xc9c6bd });
+const matFloor = new THREE.MeshLambertMaterial({ color: 0xbfbbb1 });
+function buildWorld(shotId) {
+  world.clear();
+  const st = peopleAt(shotId), pickables = [];
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(S.room.w, S.room.d), matFloor); floor.rotation.x = -Math.PI / 2; world.add(floor);
+  const grid = new THREE.GridHelper(Math.max(S.room.w, S.room.d), Math.max(S.room.w, S.room.d), 0xa9a59b, 0xb3afa5); grid.position.y = 0.002; world.add(grid);
+  for (const b of S.boxes) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), matBox);
+    m.position.set(b.x, b.h / 2, b.z); m.rotation.y = -b.rot * Math.PI / 180; m.userData = { kind: 'box', name: b.name };
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: 0x8d897f })); m.add(e);
+    world.add(m); pickables.push(m);
+  }
+  for (const p0 of S.people) {
+    const p = st[p0.id], H = p.sit ? 1.25 : 1.7, r = 0.25;
+    const grp = new THREE.Group(); grp.position.set(p.x, 0, p.z); grp.rotation.y = Math.PI - p.face * Math.PI / 180;
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(r, H - 2 * r, 6, 16), new THREE.MeshLambertMaterial({ color: p.color }));
+    body.position.y = H / 2; body.userData = { kind: 'person', id: p.id, name: p.name };
+    const mask = new THREE.Mesh(new THREE.SphereGeometry(r * 1.04, 24, 12, Math.PI / 2 - Math.PI / 4, Math.PI / 2, Math.PI * 0.18, Math.PI * 0.42), matWhite);
+    mask.position.y = H - r; mask.userData = body.userData;
+    grp.add(body, mask); world.add(grp); pickables.push(body, mask);
+    const lab = nameSprite(p.name, p.color); lab.position.set(p.x, H + 0.28, p.z); world.add(lab);
+  }
+  world.updateMatrixWorld(true);
+  return { st, pickables };
+}
+const spriteCache = {};
+function nameSprite(name, color) {
+  const key = name + color;
+  if (!spriteCache[key]) {
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 72; const x = cv.getContext('2d');
+    x.font = 'bold 40px sans-serif'; const w = Math.min(248, x.measureText(name).width + 36);
+    x.fillStyle = 'rgba(255,255,255,.92)'; x.beginPath(); x.roundRect((256 - w) / 2, 8, w, 56, 28); x.fill();
+    x.fillStyle = color; x.beginPath(); x.arc((256 - w) / 2 + 22, 36, 8, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#1d1d1f'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(name, 128 + 8, 38);
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+    spriteCache[key] = new THREE.SpriteMaterial({ map: t, depthTest: false, sizeAttenuation: false });
+  }
+  const sp = new THREE.Sprite(spriteCache[key]); sp.scale.set(0.3, 0.084, 1); sp.renderOrder = 10; return sp;
+}
+function setCam(c) {
+  cam3.position.set(c.x, c.h, c.z); cam3.fov = 2 * Math.atan(10.125 / c.lens) * 180 / Math.PI;
+  cam3.aspect = 16 / 9; cam3.updateProjectionMatrix(); cam3.lookAt(c.tx, c.th, c.tz); cam3.updateMatrixWorld();
+}
+function render3d(shotId, w = 1280, h = 720) {
+  const sh = S.shots.find(s => s.id === shotId), c = camOf(sh);
+  R3.setSize(w, h, false);
+  if (!c) { R3.clear(); return null }
+  const ctx = buildWorld(shotId); setCam(c); R3.render(scene, cam3);
+  return ctx;
+}
+
+/* ---------------- 站位分析 ---------------- */
+const ray = new THREE.Raycaster();
+function analyse(shotId) {
+  const sh = S.shots.find(s => s.id === shotId), c = camOf(sh);
+  if (!c) return null;
+  const { st, pickables } = buildWorld(shotId); setCam(c);
+  const res = [];
+  for (const p0 of S.people) {
+    const p = st[p0.id], H = p.sit ? 1.25 : 1.7;
+    const pts = []; for (const y of [0.15, H * 0.5, H - 0.25]) for (const dx of [-0.18, 0, 0.18]) {
+      const [rx, rz] = [Math.cos(Math.atan2(c.z - p.z, c.x - p.x) + Math.PI / 2), Math.sin(Math.atan2(c.z - p.z, c.x - p.x) + Math.PI / 2)];
+      pts.push(new THREE.Vector3(p.x + rx * dx, y, p.z + rz * dx));
+    }
+    let inFrame = 0, visible = 0; const blockers = {}, lvl = { 0: [0, 0], 1: [0, 0], 2: [0, 0] };
+    for (const [k, v] of pts.entries()) {
+      const n = v.clone().project(cam3), front = v.clone().applyMatrix4(cam3.matrixWorldInverse).z < 0;
+      if (!(front && Math.abs(n.x) <= 1 && Math.abs(n.y) <= 1)) continue;
+      inFrame++; const L0 = Math.floor(k / 3); lvl[L0][1]++;
+      const dir = v.clone().sub(cam3.position), dist = dir.length(); ray.set(cam3.position, dir.normalize()); ray.far = dist + 0.3;
+      const hit = ray.intersectObjects(pickables, false).find(h => !(h.object.userData.kind === 'person' && h.object.userData.id === p.id));
+      if (hit && hit.distance < dist - 0.1) { blockers[hit.object.userData.name] = (blockers[hit.object.userData.name] || 0) + 1; lvl[L0][0]++ } else visible++;
+    }
+    if (!inFrame) { res.push({ p, inFrame: false }); continue }
+    const head = new THREE.Vector3(p.x, H - 0.25, p.z).project(cam3), foot = new THREE.Vector3(p.x, 0, p.z).project(cam3), top = new THREE.Vector3(p.x, H, p.z).project(cam3);
+    const sizeFrac = Math.abs(top.y - foot.y) / 2;
+    const size = sizeFrac < 0.42 ? '全景' : sizeFrac < 0.95 ? '全身' : sizeFrac < 1.7 ? '中景' : sizeFrac < 3.2 ? '近景' : '特写';
+    const xs = head.x, pos = xs < -0.45 ? '画面左边' : xs < -0.15 ? '画面中间偏左' : xs <= 0.15 ? '画面中间' : xs <= 0.45 ? '画面中间偏右' : '画面右边';
+    const [fx, fz] = faceVec(p.face), tc = [c.x - p.x, c.z - p.z], L = Math.hypot(...tc) || 1, cos = (fx * tc[0] + fz * tc[1]) / L;
+    const ang = Math.acos(Math.max(-1, Math.min(1, cos))) * 180 / Math.PI;
+    let facing;
+    if (ang < 40) facing = '正脸对着镜头';
+    else if (ang > 135) facing = '背对镜头';
+    else {
+      const look = new THREE.Vector3(p.x + fx, H - 0.25, p.z + fz).project(cam3);
+      facing = (ang < 80 ? '侧着脸' : '侧脸') + '，看向' + (look.x > head.x ? '画面右边' : '画面左边');
+    }
+    const blk = Object.entries(blockers).sort((a, b) => b[1] - a[1]);
+    const hidden = 1 - visible / inFrame;
+    let occl = '';
+    if (blk.length && hidden > 0.12) {
+      const hl = [0, 1, 2].map(k => lvl[k][1] ? lvl[k][0] / lvl[k][1] : 0);
+      const part = hl[2] > 0.5 && hl[0] > 0.5 && hl[1] > 0.5 ? '几乎整个人' : hl[0] > 0.5 && hl[1] > 0.5 ? '下半身' : hl[0] > 0.5 ? '腿' : hl[2] > 0.5 ? '头' : '一部分身体';
+      occl = `${part}被${blk[0][0]}挡住`;
+    }
+    const edge = inFrame < pts.length * 0.6 ? '只露出一部分在画面边上' : '';
+    res.push({ p, inFrame: true, x: xs, pos, size, facing, occl, edge, hidden });
+  }
+  return { sh, c, res };
+}
+function sayShot(a, idx) {
+  if (!a) return '这个镜头还没选机位。';
+  const vis = a.res.filter(r => r.inFrame).sort((u, v) => u.x - v.x), out = a.res.filter(r => !r.inFrame).map(r => r.p.name);
+  const sizes = vis.map(r => r.size), lead = sizes.length ? sizes[Math.floor(sizes.length / 2)] : '空镜';
+  let t = `S${idx + 1}（${a.c.lens}mm，${vis.length ? lead : '空镜'}）：`;
+  if (!vis.length) t += '画面里没有人。';
+  else t += vis.map(r => `${r.pos}是${r.p.name}，${r.facing}${r.occl ? '，' + r.occl : ''}${r.edge ? '，' + r.edge : ''}`).join('；') + '。';
+  if (vis.length >= 2) t += `从左到右：${vis.map(r => r.p.name).join('、')}。`;
+  if (out.length) t += `\n（不在画面里，提示词里这一镜不写：${out.join('、')}）`;
+  return t;
+}
+/* 越轴：相邻两镜里同时出现的两个人，左右顺序反了 */
+function axisWarn(i) {
+  if (i < 1) return null;
+  const a = analyse(S.shots[i - 1].id), b = analyse(S.shots[i].id);
+  if (!a || !b) return null;
+  const clear = r => r.inFrame && !r.edge && r.hidden < 0.6;
+  const xa = Object.fromEntries(a.res.filter(clear).map(r => [r.p.id, r])), xb = b.res.filter(clear);
+  for (let m = 0; m < xb.length; m++) for (let n = m + 1; n < xb.length; n++) {
+    const p = xb[m], q = xb[n]; if (!xa[p.p.id] || !xa[q.p.id]) continue;
+    if (Math.sign(p.x - q.x) !== Math.sign(xa[p.p.id].x - xa[q.p.id].x)) return `${p.p.name}和${q.p.name}的左右跟上一镜反了（越轴）`;
+  }
+  return null;
+}
+/* 台词估时：中文约每秒 4.5 字，前后各留 0.3 秒 */
+const speechSec = t => { const cjk = (t.match(/[一-鿿]/g) || []).length, other = t.replace(/[一-鿿\s，。！？、；：“”‘’（）…—]/g, '').length; return t.trim() ? cjk / 4.5 + other / 12 + 0.6 : 0 };
+
+/* ---------------- 界面 ---------------- */
+function refresh(fast) {
+  drawPlan();
+  const i = shotIndex(curShot);
+  const a = render3d(curShot, c3d.clientWidth * 2, c3d.clientWidth * 2 * 9 / 16);
+  document.getElementById('tag3d').textContent = i >= 0 ? `S${i + 1} · ${camOf(S.shots[i])?.name || '未选机位'}` : '还没有镜头';
+  if (fast) return;
+  renderList(); renderProps(); renderShots(); renderAnalysis();
+}
+function renderList() {
+  const L = document.getElementById('list'); L.innerHTML = '';
+  const add = (kind, o, color, label) => { const d = document.createElement('div'); d.className = 'it' + (isSel(kind, o.id) ? ' on' : ''); d.innerHTML = `<span class="dot" style="background:${color}"></span>${label}`; d.onclick = () => { sel = { kind, id: o.id }; refresh() }; L.appendChild(d) };
+  S.people.forEach(p => add('person', p, p.color, p.name));
+  S.cameras.forEach(c => add('camera', c, '#3a3a3c', '机位 · ' + c.name));
+  S.boxes.forEach(b => add('box', b, '#c9c6bd', b.name));
+}
+function field(label, val, on, type = 'text', step) { const l = document.createElement('label'); l.innerHTML = `<span>${label}</span>`; const i = document.createElement('input'); i.type = type; i.value = val; if (step) i.step = step; i.oninput = () => { on(type === 'number' ? parseFloat(i.value) || 0 : i.value); save(); refresh(true); renderShots(); renderAnalysis(); renderList() }; l.appendChild(i); return l }
+function renderProps() {
+  const P = document.getElementById('props'); P.innerHTML = '';
+  const tog = document.createElement('label'); tog.className = 'toggle'; tog.style.display = 'flex'; tog.innerHTML = `<input type="checkbox" ${perShot ? 'checked' : ''}> 只改这一镜的站位（走位）`; tog.querySelector('input').onchange = e => { perShot = e.target.checked }; P.appendChild(tog);
+  if (!sel) { P.insertAdjacentHTML('beforeend', '<span class="hint">在俯视图上点一个东西</span>'); return }
+  const del = document.createElement('button'); del.className = 'btn small'; del.textContent = '删除'; del.style.marginTop = '8px';
+  if (sel.kind === 'person') {
+    const p = S.people.find(o => o.id === sel.id); if (!p) return;
+    P.append(field('名字', p.name, v => p.name = v), field('颜色', p.color, v => p.color = v, 'color'));
+    const cur = peopleAt(curShot)[p.id];
+    P.append(field('朝向°', cur.face, v => setPerson(p, { face: v }), 'number', 5));
+    const s = document.createElement('label'); s.innerHTML = '<span>姿势</span><select><option value="0">站</option><option value="1">坐</option></select>'; s.querySelector('select').value = p.sit ? '1' : '0'; s.querySelector('select').onchange = e => { p.sit = e.target.value === '1'; save(); refresh() }; P.append(s);
+    const sh = S.shots.find(x => x.id === curShot);
+    if (sh && sh.moves[p.id]) { const r = document.createElement('button'); r.className = 'btn small'; r.textContent = '取消这一镜的走位'; r.onclick = () => { delete sh.moves[p.id]; save(); refresh() }; P.append(r) }
+    del.onclick = () => { S.people = S.people.filter(o => o.id !== p.id); S.shots.forEach(x => { delete x.moves[p.id]; if (x.speaker === p.id) x.speaker = '' }); sel = null; save(); refresh() };
+  }
+  if (sel.kind === 'camera') {
+    const c = S.cameras.find(o => o.id === sel.id); if (!c) return;
+    P.append(field('名字', c.name, v => c.name = v), field('焦距mm', c.lens, v => c.lens = Math.max(8, v), 'number', 1), field('机位高m', c.h, v => c.h = v, 'number', 0.1), field('看的高m', c.th, v => c.th = v, 'number', 0.1));
+    del.onclick = () => { S.cameras = S.cameras.filter(o => o.id !== c.id); sel = null; save(); refresh() };
+  }
+  if (sel.kind === 'box') {
+    const b = S.boxes.find(o => o.id === sel.id); if (!b) return;
+    P.append(field('名字', b.name, v => b.name = v));
+    const row = document.createElement('div'); row.className = 'row2';
+    row.append(field('宽m', b.w, v => b.w = v, 'number', 0.1), field('深m', b.d, v => b.d = v, 'number', 0.1), field('高m', b.h, v => b.h = v, 'number', 0.1), field('转°', b.rot, v => b.rot = v, 'number', 5));
+    P.append(row);
+    del.onclick = () => { S.boxes = S.boxes.filter(o => o.id !== b.id); sel = null; save(); refresh() };
+  }
+  P.append(del);
+}
+function setPerson(p, patch) {
+  const sh = S.shots.find(x => x.id === curShot), cur = peopleAt(curShot)[p.id];
+  if (perShot && sh) sh.moves[p.id] = { ...(sh.moves[p.id] || { x: cur.x, z: cur.z, face: cur.face }), ...patch }; else Object.assign(p, patch);
+}
+function renderShots() {
+  const T = document.getElementById('tShots'); T.innerHTML = '';
+  S.shots.forEach((sh, i) => {
+    const tr = document.createElement('tr'); if (sh.id === curShot) tr.className = 'on';
+    const need = speechSec(sh.line), over = need > sh.dur + 0.05, ax = axisWarn(i);
+    tr.innerHTML = `<td class="num">S${i + 1}</td><td><select class="cam">${S.cameras.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></td>
+      <td><input class="dur" type="number" step="0.5" min="0.5" value="${sh.dur}"></td>
+      <td><select class="spk"><option value="">（无台词）</option>${S.people.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}<option value="vo">旁白</option></select></td>
+      <td><input class="line" value="${(sh.line || '').replace(/"/g, '&quot;')}" placeholder="这一镜的台词"></td>
+      <td>${over ? `<span class="pill warn">台词要 ${need.toFixed(1)} 秒</span> ` : sh.line ? '<span class="pill ok">说得完</span> ' : ''}${ax ? '<span class="pill bad" title="' + ax + '">越轴</span>' : ''}</td>
+      <td><button class="btn small del">✕</button></td>`;
+    tr.querySelector('.cam').value = sh.cam || ''; tr.querySelector('.spk').value = sh.speaker || '';
+    tr.querySelector('.num').onclick = () => { curShot = sh.id; refresh() };
+    tr.onclick = e => { if (e.target.tagName === 'TD') { curShot = sh.id; refresh() } };
+    tr.querySelector('.cam').onchange = e => { sh.cam = e.target.value; curShot = sh.id; save(); refresh() };
+    tr.querySelector('.dur').onchange = e => { sh.dur = Math.max(0.5, parseFloat(e.target.value) || 1); save(); refresh() };
+    tr.querySelector('.spk').onchange = e => { sh.speaker = e.target.value; save(); refresh() };
+    tr.querySelector('.line').onchange = e => { sh.line = e.target.value; save(); refresh() };
+    tr.querySelector('.line').onfocus = () => { if (curShot !== sh.id) { curShot = sh.id; refresh(true); renderAnalysis(); drawPlan() } };
+    tr.querySelector('.del').onclick = () => { S.shots.splice(i, 1); if (curShot === sh.id) curShot = S.shots[Math.max(0, i - 1)]?.id || null; save(); refresh() };
+    T.appendChild(tr);
+  });
+}
+function renderAnalysis() {
+  const A = document.getElementById('analysis'), i = shotIndex(curShot);
+  if (i < 0) { A.innerHTML = '<span class="hint">点“＋ 镜头”加一个镜头</span>'; return }
+  const a = analyse(curShot), sh = S.shots[i], need = speechSec(sh.line), ax = axisWarn(i);
+  let html = `<h3>这一镜的站位（可以直接抄进提示词）</h3><div class="say" id="sayText">${sayShot(a, i)}</div><button class="btn small" id="bCopy">复制这一镜</button> <button class="btn small" id="bCopyAll">复制全部镜头</button>`;
+  html += '<h3>检查</h3>';
+  if (ax) html += `<div class="bad">⚠ ${ax}。观众会觉得两个人突然换了位置；把机位放回两个人连线的同一侧，或者中间加一个过渡镜头。</div>`;
+  if (sh.line) html += need > sh.dur + 0.05 ? `<div class="warn">⚠ 台词正常语速大约要 ${need.toFixed(1)} 秒，这一镜只有 ${sh.dur} 秒。把时长改到 ${Math.ceil(need * 2) / 2} 秒，或者删减台词。</div>` : `<div class="ok">✓ 台词大约 ${need.toFixed(1)} 秒，说得完。</div>`;
+  if (a) for (const r of a.res) if (r.inFrame && r.hidden > 0.6) html += `<div class="warn">⚠ ${r.p.name}${r.occl}，观众可能认不出是谁。</div>`;
+  if (a && sh.speaker && sh.speaker !== 'vo') { const r = a.res.find(x => x.p.id === sh.speaker); if (r && !r.inFrame) html += `<div class="hint">说话的${r.p.name}不在画面里（画外音）。</div>` }
+  A.innerHTML = html;
+  A.querySelector('#bCopy').onclick = () => navigator.clipboard?.writeText(sayShot(a, i));
+  A.querySelector('#bCopyAll').onclick = () => navigator.clipboard?.writeText(S.shots.map((s, k) => sayShot(analyse(s.id), k) + (s.line ? `\n台词（${nameOf(s.speaker)}）：“${s.line}”` : '')).join('\n\n'));
+}
+const nameOf = id => id === 'vo' ? '旁白' : S.people.find(p => p.id === id)?.name || '';
+
+document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+  const k = b.dataset.add;
+  if (k === 'person') { const p = { id: uid('p'), name: '人物' + (S.people.length + 1), color: COLORS[S.people.length % COLORS.length], x: 0, z: 0, face: 180, sit: false }; S.people.push(p); sel = { kind: 'person', id: p.id } }
+  if (k === 'camera') { const c = { id: uid('c'), name: '机位' + (S.cameras.length + 1), x: 0, z: S.room.d / 2 - 0.5, h: 1.5, tx: 0, tz: 0, th: 1.3, lens: 35 }; S.cameras.push(c); sel = { kind: 'camera', id: c.id } }
+  if (k === 'box') { const o = { id: uid('b'), name: '家具', x: 0, z: 0, w: 1, d: 1, h: 0.8, rot: 0 }; S.boxes.push(o); sel = { kind: 'box', id: o.id } }
+  if (k === 'shot') { const s = { id: uid('s'), cam: (camOf(S.shots.find(x => x.id === curShot)) || S.cameras[0])?.id || '', dur: 3, speaker: '', line: '', moves: {} }; const i = shotIndex(curShot); S.shots.splice(i + 1, 0, s); curShot = s.id }
+  save(); refresh();
+});
+document.getElementById('bSample').onclick = () => { if (confirm('换成示例场景？当前内容会被替换（先点“保存”可以留一份）。')) { S = sampleShots(SAMPLE()); curShot = S.shots[0].id; sel = null; save(); fitPlan(); refresh() } };
+document.getElementById('bNew').onclick = () => { if (confirm('清空当前场景？')) { S = { name: '新场景', room: { w: 10, d: 8 }, boxes: [], people: [], cameras: [], shots: [] }; curShot = null; sel = null; save(); fitPlan(); refresh() } };
+document.getElementById('bSave').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' })); a.download = (S.name || '白膜场景') + '.json'; a.click() };
+document.getElementById('bLoad').onclick = () => document.getElementById('file').click();
+document.getElementById('file').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { S = JSON.parse(await f.text()); S.shots.forEach(s => s.moves ||= {}); curShot = S.shots[0]?.id || null; sel = null; save(); fitPlan(); refresh() } catch (err) { alert('这个文件打不开：' + err.message) } };
+
+/* ---------------- 播放预演 ---------------- */
+const player = document.getElementById('player'), cp = document.getElementById('cPlay'), pg = cp.getContext('2d');
+let playing = 0;
+async function frameOf(shotId) { render3d(shotId, 1280, 720); const img = new Image(); img.src = c3d.toDataURL('image/jpeg', 0.92); await img.decode(); return img }
+function drawFrame(img, i, sh, t, need, over) {
+  pg.drawImage(img, 0, 0, 1280, 720);
+  pg.fillStyle = 'rgba(0,0,0,.55)'; pg.fillRect(20, 20, 300, 40);
+  pg.fillStyle = '#fff'; pg.font = 'bold 22px sans-serif'; pg.textAlign = 'left'; pg.fillText(`S${i + 1} · ${camOf(sh)?.name || ''} · ${camOf(sh)?.lens || ''}mm`, 32, 48);
+  if (over) { pg.fillStyle = 'rgba(232,89,12,.9)'; pg.fillRect(20, 66, 420, 34); pg.fillStyle = '#fff'; pg.font = '18px sans-serif'; pg.fillText(`台词要 ${need.toFixed(1)} 秒，这一镜只有 ${sh.dur} 秒`, 32, 89) }
+  if (sh.line) {
+    const txt = `${nameOf(sh.speaker)}：${sh.line}`; pg.font = 'bold 30px sans-serif'; pg.textAlign = 'center';
+    const w = pg.measureText(txt).width + 40; pg.fillStyle = 'rgba(0,0,0,.6)'; pg.fillRect(640 - w / 2, 640, w, 50);
+    pg.fillStyle = '#fff'; pg.fillText(txt, 640, 676);
+  }
+  pg.fillStyle = 'rgba(255,255,255,.25)'; pg.fillRect(0, 714, 1280, 6); pg.fillStyle = '#ff6a3d'; pg.fillRect(0, 714, 1280 * t, 6);
+}
+async function play() {
+  const token = ++playing; player.style.display = 'flex';
+  const imgs = []; for (const sh of S.shots) imgs.push(await frameOf(sh.id));
+  const useTTS = document.getElementById('optTTS').checked && 'speechSynthesis' in window;
+  let rec, chunks = [];
+  if (document.getElementById('optRec').checked && cp.captureStream) {
+    rec = new MediaRecorder(cp.captureStream(30), { mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm' });
+    rec.ondataavailable = e => chunks.push(e.data); rec.start();
+  }
+  const total = S.shots.reduce((a, s) => a + Math.max(s.dur, speechSec(s.line)), 0); let done = 0;
+  for (let i = 0; i < S.shots.length && token === playing; i++) {
+    const sh = S.shots[i], need = speechSec(sh.line), over = need > sh.dur + 0.05, len = Math.max(sh.dur, need);
+    document.getElementById('playInfo').textContent = `S${i + 1} / ${S.shots.length}`;
+    let spoken = !useTTS || !sh.line;
+    if (!spoken) { const u = new SpeechSynthesisUtterance(sh.line); u.lang = 'zh-CN'; u.rate = 1.05; u.onend = u.onerror = () => spoken = true; speechSynthesis.cancel(); speechSynthesis.speak(u); setTimeout(() => spoken = true, (need + 2) * 1000) }
+    const t0 = performance.now();
+    await new Promise(res => { const tick = () => { if (token !== playing) return res(); const el = (performance.now() - t0) / 1000; drawFrame(imgs[i], i, sh, Math.min(1, (done + Math.min(el, len)) / total), need, over); if (el >= len && spoken) return res(); requestAnimationFrame(tick) }; tick() });
+    done += len;
+  }
+  if (rec) { rec.onstop = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' })); a.download = (S.name || '预演') + '.webm'; a.click() }; rec.stop() }
+  document.getElementById('playInfo').textContent = '播放完了';
+}
+document.getElementById('bPlay').onclick = () => { if (!S.shots.length) return alert('先加几个镜头'); play() };
+document.getElementById('bReplay').onclick = () => play();
+document.getElementById('bClose').onclick = () => { playing++; speechSynthesis?.cancel(); player.style.display = 'none' };
+
+addEventListener('resize', () => { fitPlan(); refresh() });
+fitPlan(); refresh();
+window.__S = () => S;
+</script>
+</body>
+</html>
